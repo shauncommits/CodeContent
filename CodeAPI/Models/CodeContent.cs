@@ -2,9 +2,10 @@ namespace CodeAPI.Models;
 
 public class CodeContent
 {
-    private string Title { get; set; }
-    private int Step { get; set; }
-    private string Description { get; set; }
-    private object[] Picture { get; set; }
-    private CodeContent[] SubCodeContent { get; set; }
+    public string Title { get; set; }
+    public int Step { get; set; }
+    public string Description { get; set; }
+    public object[] Picture { get; set; }
+    public CodeContent[] SubCodeContent { get; set; }
+    public CodeModel CodeModel { get; set; }
 }
