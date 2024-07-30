@@ -1,10 +1,12 @@
+using MongoDB.Bson;
+
 namespace CodeAPI.Models;
 
 public interface ICodeContentFactory
 {
-    CodeContent GetCodeContentByStep(int step);
-    IEnumerable<CodeContent> GetAllCodeContents();
-    void AddCodeContent(CodeContent codeContent);
-    void UpdateCodeContent(CodeContent codeContent);
-    void DeleteCodeContent(int id);
+    Task<CodeContent> GetCodeContentById(ObjectId step);
+    Task<List<CodeContent>> GetAllCodeContents();
+    Task AddCodeContent(CodeContent codeContent);
+    Task UpdateCodeContent(CodeContent codeContent);
+    Task<bool> DeleteCodeContent(ObjectId id);
 }

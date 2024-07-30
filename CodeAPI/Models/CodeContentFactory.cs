@@ -1,56 +1,40 @@
+using MongoDB.Bson;
+using MongoDB.Driver;
+
 namespace CodeAPI.Models;
 
 public class CodeContentFactory: ICodeContentFactory
 {
-    private readonly CodeContentDBContext _dbContext;
-    private IEnumerable<CodeContent> _codeContents;
-    private int count;
-    
-    public CodeContentFactory(CodeContentDBContext dbContext)
+    private readonly IMongoCollection<CodeContent> _collection;
+    public CodeContentFactory(IMongoDatabase database)
     {
-        _dbContext = dbContext;
-        _codeContents = _dbContext.CodeContents.ToList();
+        _collection = database.GetCollection<CodeContent>("CodeContents");
     }
     
-    public CodeContent GetCodeContentByStep(int step)
+    public async Task<CodeContent> GetCodeContentById(ObjectId id)
     {
-        return _codeContents.FirstOrDefault(_content => _content.Step == step);
+        return await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
     }
 
-    public IEnumerable<CodeContent> GetAllCodeContents()
+    public async Task<List<CodeContent>> GetAllCodeContents()
     {
-        return _codeContents;
+        return await _collection.Find(_ => true).ToListAsync();
     }
 
-    public void AddCodeContent(CodeContent codeContent)
+    public async Task AddCodeContent(CodeContent codeContent)
     {
-        count = _codeContents.Max(code => code.Step) + 1;
-        codeContent.Step = count;
-        _dbContext.CodeContents.Add(codeContent);
-        _dbContext.SaveChangesAsync();
+        await _collection.InsertOneAsync(codeContent);
     }
 
-    public void UpdateCodeContent(CodeContent codeContent)
+    public async Task UpdateCodeContent(CodeContent codeContent)
     {
-        var codeContentUpdate = _codeContents.FirstOrDefault(codeContent => codeContent.Step == codeContent.Step);
-
-        codeContentUpdate.Title = codeContent.Title;
-        codeContentUpdate.Description = codeContent.Description;
-        codeContentUpdate.Picture = codeContent.Picture;
-        codeContentUpdate.SubCodeContent = codeContent.SubCodeContent;
-        codeContentUpdate.CodeModel = codeContent.CodeModel;
-
-        _dbContext.SaveChangesAsync();
+        await _collection.ReplaceOneAsync(p => p.Id == codeContent.Id, codeContent);
     }
 
-    public void DeleteCodeContent(int id)
+    public async Task<bool> DeleteCodeContent(ObjectId id)
     {
-        var codeContent = _codeContents.FirstOrDefault(codeContent => codeContent.Step == id);
-
-        if (codeContent != null)
-        {
-            _dbContext.CodeContents.Remove(codeContent);
-            _dbContext.SaveChangesAsync();
-        }
+        var filter = Builders<CodeContent>.Filter.Eq(r => r.Id, id);
+        var result = await _collection.DeleteOneAsync(filter);
+        return result.DeletedCount == 1;
     }
 }
