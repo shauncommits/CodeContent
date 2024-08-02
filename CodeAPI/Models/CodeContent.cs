@@ -10,7 +10,6 @@ public class CodeContent
     [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId? Id { get; set; }
     public string Title { get; set; }
-    public int Step { get; set; }
     public string Description { get; set; }
     [BsonSerializer(typeof(JsonElementSerializer))]
     public JsonElement Picture { get; set; }
