@@ -1,12 +1,42 @@
 using CodeAPI.Models;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
+using CodeAPI.Constants;
+
+// OpenTelemetry
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+
+// OpenTelemetry Service
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService(
+        serviceName: OpenTelemetryConstants.ServiceName,
+        serviceVersion: OpenTelemetryConstants.ServiceVersion))
+    .WithTracing(tracing => tracing
+        .AddSource(OpenTelemetryConstants.ServiceName)
+        .AddAspNetCoreInstrumentation()
+        .AddConsoleExporter())
+    .WithMetrics(metrics => metrics
+        .AddMeter(OpenTelemetryConstants.ServiceName)
+        .AddConsoleExporter());
+
+builder.Logging.AddOpenTelemetry(options => options
+    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(
+        serviceName: OpenTelemetryConstants.ServiceName,
+        serviceVersion: OpenTelemetryConstants.ServiceVersion))
+    .AddConsoleExporter());
+
+// Register the Instrumentation class as a singleton in the DI container.
+builder.Services.AddSingleton<Instrumentation>();
+
 builder.Services.AddControllers();
 
 // Add mongodb service

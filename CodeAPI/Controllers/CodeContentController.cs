@@ -1,6 +1,8 @@
 using CodeAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
+using System.Diagnostics;
+using CodeAPI.Constants;
 
 namespace CodeAPI.Controllers;
 
@@ -9,10 +11,16 @@ namespace CodeAPI.Controllers;
 public class CodeContentController: ControllerBase
 {
     private ICodeContentFactory _codeContentFactory;
+    
+    // For OpenTelemetry Instrumentation
+    private ILogger<CodeContentController> logger;
+    private ActivitySource activitySource;
 
-    public CodeContentController(ICodeContentFactory codeContentFactory)
+    public CodeContentController(ICodeContentFactory codeContentFactory, ILogger<CodeContentController> logger, Instrumentation instrumentation)
     {
+        this.logger = logger;
         _codeContentFactory = codeContentFactory;
+        activitySource = instrumentation.ActivitySource;
     }
 
     /// <summary>
@@ -24,14 +32,21 @@ public class CodeContentController: ControllerBase
     [HttpGet("/GetAll", Name = "GetAll")]   
     public async Task<IActionResult> GetAll()
     {
-        var codeContents = await _codeContentFactory.GetAllCodeContents();
-
-        if (codeContents == null)
+        using (var myActivity = activitySource.StartActivity(OpenTelemetryConstants.ServiceName))
         {
-            StatusCode(500);
-            return NotFound("Server might be down, try again after an hour");
+            var codeContents = await _codeContentFactory.GetAllCodeContents();
+
+            if (codeContents == null)
+            {
+                StatusCode(500);
+                logger.LogError("Server down");
+                myActivity.SetTag("Error: Server might be down", StatusCode(500));
+                return NotFound("Server might be down, try again after an hour");
+            }
+            logger.LogInformation("Content successfully retrieved: {result}", codeContents);
+            myActivity.SetTag("Content successfully retrieved, the length of the content is: ", codeContents.Count);
+            return Ok(codeContents);
         }
-        return Ok(codeContents);
     }
     
     /// <summary>
@@ -44,15 +59,22 @@ public class CodeContentController: ControllerBase
     [HttpPost("/AddContent", Name = "AddContent")]
     public async Task<IActionResult> AddContent(CodeContent codeContent)
     {
-        if (codeContent == null)
+        using (var myActivity = activitySource.StartActivity(OpenTelemetryConstants.ServiceName))
         {
-             StatusCode(400);
-            return BadRequest("CodeContent cannot be null");
+            if (codeContent == null)
+            {
+                StatusCode(400);
+                myActivity.SetTag("CodeContent cannot be null", StatusCode(400));
+                return BadRequest("CodeContent cannot be null");
+            }
+
+            codeContent.Id = ObjectId.GenerateNewId();
+
+            await _codeContentFactory.AddCodeContent(codeContent);
+            myActivity.SetTag("Content successfully added: ", codeContent);
+            return CreatedAtAction(nameof(GetCodeContentById), new { id = codeContent.Id }, codeContent);
+            
         }
-        codeContent.Id = ObjectId.GenerateNewId();
-        
-        await _codeContentFactory.AddCodeContent(codeContent);
-        return CreatedAtAction(nameof(GetCodeContentById), new { id = codeContent.Id }, codeContent);
     }
 
     /// <summary>
@@ -65,19 +87,27 @@ public class CodeContentController: ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetCodeContentById(string id)
     {
-        if (!ObjectId.TryParse(id, out var objectId))
+        using (var myActivity = activitySource.StartActivity(OpenTelemetryConstants.ServiceName))
         {
-            StatusCode(400);
-            return BadRequest("Invalid ID format");
-        }
-        var codeContent = await _codeContentFactory.GetCodeContentById(objectId);
-        if (codeContent == null)
-        {
-            StatusCode(500);
-            return NotFound();
-        }
 
-        return Ok(codeContent);
+            if (!ObjectId.TryParse(id, out var objectId))
+            {
+                StatusCode(400);
+                myActivity.SetTag("Invalid ID format", StatusCode(400));
+                return BadRequest("Invalid ID format");
+            }
+
+            var codeContent = await _codeContentFactory.GetCodeContentById(objectId);
+            if (codeContent == null)
+            {
+                StatusCode(500);
+                myActivity.SetTag("Something went wrong with retrieving CodeContent by ID: ", StatusCode(500));
+                return NotFound();
+            }
+            
+            myActivity.SetTag("Content successfully retrieved: ", codeContent);
+            return Ok(codeContent);
+        }
     }
     
     /// <summary>
@@ -90,19 +120,26 @@ public class CodeContentController: ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCodeContent(string id, CodeContent codeContent)
     {
-        if (!ObjectId.TryParse(id, out var objectId))
+        using (var myActivity = activitySource.StartActivity(OpenTelemetryConstants.ServiceName))
         {
-            if (codeContent == null)
+            if (!ObjectId.TryParse(id, out var objectId))
             {
-                return StatusCode(400, "CodeContent cannot be null");
-            }
-            return BadRequest("Invalid ID format");
-        }
+                if (codeContent == null)
+                {
+                    myActivity.SetTag("Supplied null CodeContent", codeContent);
+                    return StatusCode(400, "CodeContent cannot be null");
+                }
 
-        codeContent.Id = objectId;
-        
-        await _codeContentFactory.UpdateCodeContent(codeContent);
-        return Ok();
+                myActivity.SetTag("User supplied invalid ID format: ", codeContent);
+                return BadRequest("Invalid ID format");
+            }
+
+            codeContent.Id = objectId;
+
+            await _codeContentFactory.UpdateCodeContent(codeContent);
+            myActivity.SetTag("CodeContent retrieved successfully: ", codeContent);
+            return Ok();
+        }
     }
 
     /// <summary>
@@ -115,21 +152,27 @@ public class CodeContentController: ControllerBase
     [HttpDelete("DeleteContent/{id}")]
     public async Task<IActionResult> DeleteCodeContent(string id)
     {
-        var st = id;
-        if (!ObjectId.TryParse(id, out var objectId))
+        using (var myActivity = activitySource.StartActivity(OpenTelemetryConstants.ServiceName))
         {
-            return BadRequest("Invalid ID format");
-        }
+            var st = id;
+            if (!ObjectId.TryParse(id, out var objectId))
+            {
+                myActivity.SetTag("Invalid ID format ", StatusCode(400));
+                return BadRequest("Invalid ID format");
+            }
 
-        var results = await _codeContentFactory.DeleteCodeContent(objectId);
+            var results = await _codeContentFactory.DeleteCodeContent(objectId);
 
-        if (results)
-        {
-            StatusCode(200);
+            if (results)
+            {
+                StatusCode(200);
+                myActivity.SetTag("Code content deleted successfully", StatusCode(400));
+                return new JsonResult(results);
+            }
+
+            StatusCode(400);
+            myActivity.SetTag("Code content does not exist in the database or the server is done ", StatusCode(400));
             return new JsonResult(results);
         }
-        StatusCode(400);
-        return new JsonResult(results);
-            
     }
 }
