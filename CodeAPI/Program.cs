@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using CodeAPI.Models;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using CodeAPI.Constants;
+using OpenTelemetry;
 
 // OpenTelemetry
 using OpenTelemetry.Logs;
@@ -23,16 +25,25 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
         .AddSource(OpenTelemetryConstants.ServiceName)
         .AddAspNetCoreInstrumentation()
-        .AddConsoleExporter())
-    .WithMetrics(metrics => metrics
-        .AddMeter(OpenTelemetryConstants.ServiceName)
-        .AddConsoleExporter());
+        .AddOtlpExporter(
+            exporterOptions =>
+            {
+                exporterOptions.ExportProcessorType = ExportProcessorType.Batch;
+                exporterOptions.BatchExportProcessorOptions = new BatchExportProcessorOptions<Activity>()
+                {
+                    MaxExportBatchSize = 1000,
+                    ExporterTimeoutMilliseconds = 10
+                };
+            }))
+     .WithMetrics(metrics => metrics
+         .AddMeter(OpenTelemetryConstants.ServiceName)
+         .AddOtlpExporter());
 
 builder.Logging.AddOpenTelemetry(options => options
     .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(
         serviceName: OpenTelemetryConstants.ServiceName,
         serviceVersion: OpenTelemetryConstants.ServiceVersion))
-    .AddConsoleExporter());
+    .AddOtlpExporter());
 
 // Register the Instrumentation class as a singleton in the DI container.
 builder.Services.AddSingleton<Instrumentation>();
