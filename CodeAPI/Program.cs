@@ -45,6 +45,20 @@ builder.Logging.AddOpenTelemetry(options => options
         serviceVersion: OpenTelemetryConstants.ServiceVersion))
     .AddOtlpExporter());
 
+// Docker container to create for using OpenTelemetry to export instrumentation
+
+/*
+ docker run --rm \
+-e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
+-p 16686:16686 \
+-p 4317:4317 \
+-p 4318:4318 \
+-p 9411:9411 \
+jaegertracing/all-in-one:latest 
+
+*/
+
+
 // Register the Instrumentation class as a singleton in the DI container.
 builder.Services.AddSingleton<Instrumentation>();
 
@@ -57,7 +71,7 @@ var mongoClient = new MongoClient(mongoConnectionString);
 // Register the custom serializer for JsonElement
 BsonSerializer.RegisterSerializer(new JsonElementSerializer());
 
-var mongoDatabase = mongoClient.GetDatabase("mongo-db");
+var mongoDatabase = mongoClient.GetDatabase("mongo-db");  // docker run -d -p 27017:27017 --name mongodb mongo
 
 // Register MongoDB database instance for dependency injection
 builder.Services.AddSingleton(mongoDatabase);
