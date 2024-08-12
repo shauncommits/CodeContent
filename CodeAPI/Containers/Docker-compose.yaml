@@ -1,0 +1,42 @@
+version: '3'
+services:
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - devkick
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - 16686:16686
+      - 4317:4317
+      - 4318:4318
+      - 9411:9411
+
+    networks:
+      - devkick
+
+  slqserver:
+    image: mcr.microsoft.com/azure-sql-edge
+    ports:
+      - 1435:1433
+    environment:
+      - ACCEPT_EULA=1
+      - MSSQL_SA_PASSWORD=Password_123
+      - MSSQL_PID=Developer
+      - MSSQL_USER=sa
+    volumes:
+      - ./data:/var/opt/mssql/data
+      - ./log:/var/opt/mssql/log
+#    networks:
+#      - devkick
+    command: [ "/opt/mssql/bin/sqlservr" ]
+    
+volumes:
+  mongodb_data:
