@@ -16,7 +16,8 @@
       "launchUrl": "",
       "applicationUrl": "http://localhost:5280",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_MONGO_ENV": "127.0.0.1"
       }
     },
     "https": {
@@ -26,7 +27,8 @@
       "launchUrl": "",
       "applicationUrl": "https://localhost:7157;http://localhost:5280",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_MONGO_ENV": "127.0.0.1"
       }
     },
     "IIS Express": {
@@ -34,7 +36,8 @@
       "launchBrowser": true,
       "launchUrl": "",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_MONGO_ENV": "127.0.0.1"
       }
     }
   }

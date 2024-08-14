@@ -66,7 +66,8 @@ builder.Services.AddControllers();
 
 // Add mongodb service
 // Configure MongoDB connection
-var mongoConnectionString = "mongodb://localhost:27017";
+var mongoEnv = Environment.GetEnvironmentVariable("ASPNETCORE_MONGO_ENV");
+var mongoConnectionString = $"mongodb://{mongoEnv}:27017";
 var mongoClient = new MongoClient(mongoConnectionString);
 // Register the custom serializer for JsonElement
 BsonSerializer.RegisterSerializer(new JsonElementSerializer());
