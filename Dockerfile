@@ -15,7 +15,7 @@ COPY . .
 WORKDIR "/src/CodeAPI"
 RUN dotnet build "CodeAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS development
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS development
 WORKDIR /src
 COPY ["CodeAPI/CodeAPI.csproj", "CodeAPI/"]
 WORKDIR "/src/CodeAPI"
