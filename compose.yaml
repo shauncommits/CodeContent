@@ -9,24 +9,29 @@ services:
     depends_on:
       mongodb:
         condition: service_started
-      slqserver:
+      sqlserver:
         condition: service_started
 #      systemServicesFake:
 #        condition: service_started
+    networks:
+      - app-network
         
     develop:   # Helps with automatically updating the running compose service whenever you make changes to your application, to use it, you must run: docker compose watch
       watch:
         - action: rebuild
           path: .
-          
+  
   container.tests:
-    image: codeapi-server
+    image: codeapi2-server
     build:
       context: .
       dockerfile: ContainerTests/Dockerfile
     depends_on:
       server:
         condition: service_started
+        
+    networks:
+      - app-network
     
   mongodb:
     image: mongo
@@ -34,6 +39,9 @@ services:
       - 27017:27017
     volumes:
       - mongodb_data:/data/db
+    
+    networks:
+      - app-network
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -44,10 +52,13 @@ services:
       - 4317:4317
       - 4318:4318
       - 9411:9411
+    networks:
+      - app-network 
   
-
-  slqserver:
+  
+  sqlserver:
     image: mcr.microsoft.com/azure-sql-edge
+    container_name: sqlserver
     ports:
       - 1435:1433
     environment:
@@ -61,9 +72,16 @@ services:
 
     command: [ "/opt/mssql/bin/sqlservr" ]
     
+    networks:
+      - app-network
+    
 #  systemServicesFake:
 #    image: sheyenrath/wiremock.net:1.5.12 #Locking the version since they made syntax updates in 1.5.13.
 #    command: [ "dotnet", "wiremock-net.dll", "--Urls", "http://*:80 http://*:9001", "--ReadStaticMappings", "true", "--WireMockLogger", "WireMockConsoleLogger" ]
 
 volumes:
   mongodb_data:
+    
+networks:
+  app-network:
+    external: true
